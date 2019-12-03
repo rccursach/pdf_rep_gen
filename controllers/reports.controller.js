@@ -2,6 +2,8 @@ var ejs = require('ejs');
 var fs = require('fs');
 var path = require('path');
 var pdf = require('html-pdf');
+var AWS = require('aws-sdk');
+var tso = require('timesolver/timeSolver.min');
 
 exports.getReport = function (req, res) {
   var data = req.data || getExampleData();
@@ -26,6 +28,58 @@ exports.getReportPDF = function (req, res) {
     // buffer can be encodead as binary and stream the blob to an S3 Bucket
   });
 };
+
+exports.getReportFromS3 = function (req, res) {
+
+  var data = req.data || getExampleData();
+  var template = fs.readFileSync(path.join(__dirname, "../templates/report.ejs"), 'utf-8');
+
+  var html = ejs.render(template, data);
+  pdf.create(html, { format: 'Letter' }).toBuffer(function(err, buffer){
+    if (err) {
+      res.send("error")
+    }
+    var s3Res = sendToS3(Buffer.from(buffer, 'base64'), 'report.pdf', res);
+    // res.setHeader('Content-type', 'application/pdf');
+    // res.send(Buffer.from(buffer, 'base64'));
+    // buffer can be encodead as binary and stream the blob to an S3 Bucket
+  });
+};
+
+function sendToS3(b64Buffer, fileName, res) {
+  // add dates to file and build URL
+  fileName = buildFileName(fileName);
+  url = buildS3URL(fileName);
+
+  var s3 = new AWS.S3({
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+    Bucket: process.env.AWS_S3_BUCKET,
+  });
+  s3.putObject({
+    Bucket: process.env.AWS_S3_BUCKET,
+    Key: fileName,
+    Body: b64Buffer
+  }, (err, data) => {
+    if (err) {
+      console.log(err);
+      res.status(500);
+      res.json({ error: err.message });
+    }
+    console.log(data);
+    res.status(201);
+    res.json({ status: 201, fileKey: fileName, ETag: data.ETag, filePublicURL: url });
+  });
+}
+
+function buildFileName(nameStr) {
+  var d = new Date();
+  nameStr = nameStr.toLowerCase().split('.pdf')[0];
+  return `${nameStr}-${tso.getString(d, "YYYY-MM-DD")}-${d.getTime()}.pdf`;
+}
+function buildS3URL(fileName) {
+  return `https://${process.env.AWS_S3_BUCKET}.s3-${process.env.AWS_S3_REGION}.amazonaws.com/${fileName}`;
+}
 
 function getExampleData() {
   return {
