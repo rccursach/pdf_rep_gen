@@ -3,6 +3,8 @@
 /**
  * Module dependencies.
  */
+const dotenv = require('dotenv');
+dotenv.config();
 
 var app = require('../app');
 var debug = require('debug')('pdf-rep-gen:server');
