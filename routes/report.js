@@ -6,6 +6,7 @@ var apikey = require('../middlewares/apikey')
 
 if (process.env.NODE_ENV === 'development') {
   router.route('/html').get(reportController.getReportHTML);    // FOR DEBUGGING THE TEMPLATE
+  router.route('/pdfd').get(reportController.getReportPDF);       // Renders the PDF on the browser's screen DEBUG
 }
 router.route('/pdf').post(apikey, reportController.getReportPDF);       // Renders the PDF on the browser's screen
 router.route('/s3').post(apikey, reportController.getReportFromS3);     // Returns JSON Obj with AWS S3 file key and URL for PDF report
