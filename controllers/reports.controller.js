@@ -1,6 +1,7 @@
 var ejs = require('ejs');
 var fs = require('fs');
 var path = require('path');
+var pdf = require('html-pdf');
 
 exports.getReport = function (req, res) {
   var data = req.data || getExampleData();
@@ -9,6 +10,21 @@ exports.getReport = function (req, res) {
   var html = ejs.render(template, data);
   // res.json(data);
   res.send(html)
+};
+
+exports.getReportPDF = function (req, res) {
+  var data = req.data || getExampleData();
+  var template = fs.readFileSync(path.join(__dirname, "../templates/report.ejs"), 'utf-8');
+
+  var html = ejs.render(template, data);
+  pdf.create(html, { format: 'Letter' }).toBuffer(function(err, buffer){
+    if (err) {
+      res.send("error")
+    }
+    res.setHeader('Content-type', 'application/pdf');
+    res.send(Buffer.from(buffer, 'base64'));
+    // buffer can be encodead as binary and stream the blob to an S3 Bucket
+  });
 };
 
 function getExampleData() {
