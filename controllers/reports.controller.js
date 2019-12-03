@@ -5,47 +5,41 @@ var pdf = require('html-pdf');
 var AWS = require('aws-sdk');
 var tso = require('timesolver/timeSolver.min');
 
-exports.getReport = function (req, res) {
-  var data = req.data || getExampleData();
-  var template = fs.readFileSync(path.join(__dirname, "../templates/report.ejs"), 'utf-8');
-
-  var html = ejs.render(template, data);
-  // res.json(data);
-  res.send(html)
+// THIS IS FOR DEBUGGING, ONLY ON NODE_ENV=development
+exports.getReportHTML = function (req, res) {
+  var html = getHTML(req);
+  res.send(html);
 };
 
+// THIS RENDERS THE PDF ON THE BROWSER'S SCREEN
 exports.getReportPDF = function (req, res) {
-  var data = req.data || getExampleData();
-  var template = fs.readFileSync(path.join(__dirname, "../templates/report.ejs"), 'utf-8');
-
-  var html = ejs.render(template, data);
+  var html = getHTML(req);
   pdf.create(html, { format: 'Letter' }).toBuffer(function(err, buffer){
-    if (err) {
-      res.send("error")
-    }
+    if (err) { sendPDFErr(err, res) }
     res.setHeader('Content-type', 'application/pdf');
     res.send(Buffer.from(buffer, 'base64'));
-    // buffer can be encodead as binary and stream the blob to an S3 Bucket
   });
 };
 
+// THIS RETURNS A JSON OBJECT WITH AWS S3 FILE KEY AND PUBLIC URL (IF BUCKET ISN'T PUBLIC WILL DENY ACCESS TO FILE ANYWAYS)
 exports.getReportFromS3 = function (req, res) {
+  var html = getHTML(req);
+  pdf.create(html, { format: 'Letter' }).toBuffer(function(err, buffer){
+    if (err) { sendPDFErr(err, res) }
+    sendToS3(Buffer.from(buffer, 'base64'), 'report.pdf', res);
+  });
+};
 
+function getHTML(req) {
   var data = req.data || getExampleData();
   var template = fs.readFileSync(path.join(__dirname, "../templates/report.ejs"), 'utf-8');
-
   var html = ejs.render(template, data);
-  pdf.create(html, { format: 'Letter' }).toBuffer(function(err, buffer){
-    if (err) {
-      res.send("error")
-    }
-    var s3Res = sendToS3(Buffer.from(buffer, 'base64'), 'report.pdf', res);
-    // res.setHeader('Content-type', 'application/pdf');
-    // res.send(Buffer.from(buffer, 'base64'));
-    // buffer can be encodead as binary and stream the blob to an S3 Bucket
-  });
-};
-
+  return html;
+}
+function sendPDFErr(err, res) {
+  res.status(500);
+  res.json({ error: err.message || 'Unknown error creating PDF file'});
+}
 function sendToS3(b64Buffer, fileName, res) {
   // add dates to file and build URL
   fileName = buildFileName(fileName);

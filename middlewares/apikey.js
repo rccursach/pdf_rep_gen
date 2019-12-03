@@ -1,4 +1,4 @@
-exports.has_api_key = (req, res, next) => {
+module.exports = (req, res, next) => {
 
   const api_key = process.env.API_KEY;
 
