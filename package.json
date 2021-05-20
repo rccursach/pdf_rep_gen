@@ -14,7 +14,7 @@
     "dotenv": "^8.2.0",
     "ejs": "^3.0.1",
     "express": "~4.16.1",
-    "html-pdf": "^2.2.0",
+    "html-pdf": "^3.0.1",
     "morgan": "~1.9.1",
     "timesolver": "^1.2.0"
   }
